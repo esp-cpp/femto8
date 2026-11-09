@@ -302,7 +302,7 @@ int holdframe(lua_State *L)
     return 0;
 }
 
-int _update_buttons(lua_State *L)
+static int _update_buttons(lua_State *L)
 {
     (void)L;
     p8_update_input();
@@ -1252,7 +1252,7 @@ int cstore(lua_State *L)
 }
 
 // memcpy(destaddr, sourceaddr, len)
-int _memcpy(lua_State *L)
+static int _memcpy(lua_State *L)
 {
     unsigned destaddr = lua_tounsigned(L, 1);
     unsigned orig_destaddr = destaddr;
@@ -1292,7 +1292,7 @@ int _memcpy(lua_State *L)
 }
 
 // memset(destaddr, val, len)
-int _memset(lua_State *L)
+static int _memset(lua_State *L)
 {
     unsigned destaddr = lua_tounsigned(L, 1);
     int val = lua_tointeger(L, 2);
@@ -1519,7 +1519,7 @@ int rnd(lua_State *L)
 }
 
 // srand(val)
-int _srand(lua_State *L)
+static int _srand(lua_State *L)
 {
     // Capture the current RNG state as the "previous seed" (lo word is the seed)
     uint32_t prev_lo = m_memory[MEMORY_RNG_STATE+4] | (m_memory[MEMORY_RNG_STATE+5] << 8) |
@@ -1627,7 +1627,7 @@ int sub(lua_State *L)
 // ****************************************************************
 
 // time()
-int _time(lua_State *L)
+static int _time(lua_State *L)
 {
     lua_pushnumber(L, fix32_from_double((double)m_frames / (double)m_fps));
 
@@ -1700,7 +1700,7 @@ int run(lua_State *L)
 }
 
 // load(filename [,breadcrumb] [,param])
-int _load(lua_State *L)
+static int _load(lua_State *L)
 {
 #ifndef FEMTO8_ESPBOX /* the ESP-IDF VFS has no working directory; carts resolve against their own folder */
     if (access(".", F_OK) == -1 && errno != EACCES)
@@ -2021,7 +2021,7 @@ int lua_stat(lua_State *L)
 }
 
 // stop([message,] [x,] [y,] [col])
-int _stop(lua_State *L)
+static int _stop(lua_State *L)
 {
     int nargs = lua_gettop(L);
     if (nargs >= 1 && !lua_isnil(L, 1)) {
@@ -2053,7 +2053,7 @@ int _stop(lua_State *L)
 // trace([coroutine,] [message,] [skip])
 // Returns a description of the current call stack as a string.
 // Mirrors debug.traceback() with PICO-8's default skip of 1.
-int _trace(lua_State *L)
+static int _trace(lua_State *L)
 {
     int arg = 0;
     lua_State *L1 = L;

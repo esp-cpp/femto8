@@ -582,8 +582,12 @@ void deinit_pico8() {
   if (!waitFor(s_cartTaskDone, 2000)) {
     // wedged outside the Lua VM (the pump never ran): show where, then kill it.
     // femto8's buffers leak in this case (p8_shutdown never runs).
+#if CONFIG_IDF_TARGET_ARCH_XTENSA
     fmt::print("[PICO8] cart task did not stop; where it is stuck:\n");
-    esp_backtrace_print_all_tasks(16);
+    esp_backtrace_print_all_tasks(16); // declared for RISC-V too, but not implemented there
+#else
+    fmt::print("[PICO8] cart task did not stop\n");
+#endif
   }
   if (s_cartTask) {
     vTaskDelete(s_cartTask);
