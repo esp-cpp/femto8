@@ -285,6 +285,12 @@ int p8_init(void);
 bool p8_is_cart_running(void);
 bool p8_is_quit_requested(void);
 int p8_load(const char *file_name, const char *param, const char *bbs_cart_id, const char *breadcrumb);
+/* m_temp_cart_memory and m_temp_lua_script, allocated on first use; 0 if out of memory */
+int p8_ensure_temp_buffers(void);
+/* m_file_buffer and m_decompression_buffer, for parsing a cart file; 0 if out
+ * of memory. Released again after the parse with FEMTO8_FREE_LOAD_BUFFERS. */
+int p8_ensure_load_buffers(void);
+void p8_release_load_buffers(void);
 int p8_load_ram(uint8_t *buffer, int size);
 int p8_make_full_path(char *ret, int ret_size, const char *dir_path, const char *file_name);
 void p8_new_cart(void);
