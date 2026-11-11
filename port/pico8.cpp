@@ -419,6 +419,11 @@ void init_pico8(const std::string& rom_filename, uint8_t* romdata, size_t rom_da
     fmt::print("[PICO8] Lua internal-SRAM budget {} B\n", budget);
   }
   box.audio_sample_rate(SAMPLE_RATE);
+  // as in resume: drain the global press latch (launcher navigation, a previous
+  // core's session) so the cart's first poll does not replay released presses,
+  // and gate the button that launched the cart until it is let go
+  s_inputGate = true;
+  (void)box.gamepad_state_latched();
   s_audioRun = true;
   // the cart on core 0 (with the emulator loop, which outranks it), audio on core 1
   s_cartTask = xTaskCreateStaticPinnedToCore(cartTask, "pico8", CART_TASK_STACK, nullptr, CART_TASK_PRIO,
