@@ -485,8 +485,12 @@ int p8_shutdown()
     m_temp_lua_script = NULL;
 
 #ifdef OS_FREERTOS
-    /* p8_init() makes a new one each time */
-    if (m_drawSemaphore) {
+    /* p8_init() makes a new one each time. Taking it first waits out a draw
+     * still in flight (on the DA1470x, draw_complete() gives it back from the
+     * LCD's completion callback); if that never comes, keep it rather than
+     * delete it under the callback. */
+    if (m_drawSemaphore &&
+        xSemaphoreTake(m_drawSemaphore, pdMS_TO_TICKS(1000)) == pdTRUE) {
         vSemaphoreDelete(m_drawSemaphore);
         m_drawSemaphore = NULL;
     }
