@@ -216,13 +216,14 @@ int p8_init()
     m_overlay_memory = (uint8_t *)malloc(MEMORY_SCREEN_SIZE);
 #endif
     m_cart_memory = (uint8_t *)malloc(CART_MEMORY_SIZE);
-    m_temp_cart_memory = (uint8_t *)malloc(CART_MEMORY_SIZE);
-    m_file_buffer = (uint8_t *)malloc(FILE_BUFFER_SIZE);
-    m_decompression_buffer = (uint8_t *)malloc(DECOMPRESSION_BUFFER_SIZE);
     m_lua_script  = (char *)malloc(LUA_SCRIPT_SIZE);
-    m_temp_lua_script  = (char *)malloc(LUA_SCRIPT_SIZE);
+    /* m_temp_cart_memory / m_temp_lua_script: only cstore() and a reload()
+     * from another cart need them, so they are taken then
+     * (p8_ensure_temp_buffers()) rather than now, when loading the cart (the
+     * PNG decode) needs the memory. m_file_buffer / m_decompression_buffer:
+     * taken for each cart file parsed (p8_ensure_load_buffers()). */
 
-    if (!m_memory || !m_cart_memory || !m_overlay_memory || !m_file_buffer || !m_decompression_buffer || !m_lua_script || !m_temp_lua_script) {
+    if (!m_memory || !m_cart_memory || !m_overlay_memory || !m_lua_script) {
         fputs("Out of memory\n", stderr);
         free(m_memory);
         free(m_cart_memory);
@@ -298,6 +299,44 @@ static void p8_wait_for_any_key(void)
     }
 }
 
+int p8_ensure_load_buffers(void)
+{
+    if (!m_file_buffer)
+        m_file_buffer = (uint8_t *)malloc(FILE_BUFFER_SIZE);
+    if (!m_decompression_buffer)
+        m_decompression_buffer = (uint8_t *)malloc(DECOMPRESSION_BUFFER_SIZE);
+    if (!m_file_buffer || !m_decompression_buffer) {
+        fputs("Out of memory for reading a cart\n", stderr);
+        p8_release_load_buffers();
+        return 0;
+    }
+    return 1;
+}
+
+void p8_release_load_buffers(void)
+{
+#ifdef FEMTO8_FREE_LOAD_BUFFERS
+    /* a board short of memory gives the 256 KB to the cart's Lua heap */
+    free(m_file_buffer);
+    free(m_decompression_buffer);
+    m_file_buffer = NULL;
+    m_decompression_buffer = NULL;
+#endif
+}
+
+int p8_ensure_temp_buffers(void)
+{
+    if (!m_temp_cart_memory)
+        m_temp_cart_memory = (uint8_t *)malloc(CART_MEMORY_SIZE);
+    if (!m_temp_lua_script)
+        m_temp_lua_script = (char *)malloc(LUA_SCRIPT_SIZE);
+    if (!m_temp_cart_memory || !m_temp_lua_script) {
+        fputs("Out of memory for another cart's data\n", stderr);
+        return 0;
+    }
+    return 1;
+}
+
 int p8_load(const char *file_name, const char *param, const char *bbs_cart_id, const char *breadcrumb)
 {
     assert(m_initialized);
@@ -305,7 +344,13 @@ int p8_load(const char *file_name, const char *param, const char *bbs_cart_id, c
     p8_show_io_icon(true);
 
     printf("Loading %s\n", file_name);
-    if (parse_cart_file(file_name, m_cart_memory, m_file_buffer, m_decompression_buffer, m_lua_script, NULL) != 0) {
+    if (!p8_ensure_load_buffers()) {
+        p8_show_io_icon(false);
+        return -1;
+    }
+    const int parsed = parse_cart_file(file_name, m_cart_memory, m_file_buffer, m_decompression_buffer, m_lua_script, NULL);
+    p8_release_load_buffers();
+    if (parsed != 0) {
         p8_show_io_icon(false);
         return -1;
     }
@@ -340,7 +385,12 @@ int p8_load_ram(uint8_t *buffer, int size)
 
     p8_show_io_icon(true);
 
+    if (!p8_ensure_load_buffers()) {
+        p8_show_io_icon(false);
+        return -1;
+    }
     int ret = parse_cart_ram(buffer, size, m_cart_memory, m_decompression_buffer, m_lua_script, NULL);
+    p8_release_load_buffers();
 
     p8_show_io_icon(false);
     return ret;
@@ -426,6 +476,7 @@ int p8_shutdown()
     free(m_lua_script);
     free(m_temp_lua_script);
     m_cart_memory = NULL;
+    m_temp_cart_memory = NULL;
     m_memory = NULL;
     m_overlay_memory = NULL;
     m_file_buffer = NULL;

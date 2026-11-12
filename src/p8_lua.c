@@ -1221,17 +1221,24 @@ int cstore(lua_State *L)
         return 1;
     }
 
+    if (!p8_ensure_temp_buffers() || !p8_ensure_load_buffers()) {
+        p8_show_io_icon(false);
+        lua_pushinteger(L, 0);
+        return 1;
+    }
     memset(m_temp_cart_memory, 0, CART_MEMORY_SIZE);
     m_temp_lua_script[0] = '\0';
     if (access(resolved_path, F_OK) == -1) {
         if (errno != ENOENT) {
             fprintf(stderr, "cstore: failed to access existing cart: %s\n", strerror(errno));
+            p8_release_load_buffers();
             p8_show_io_icon(false);
             lua_pushinteger(L, 0);
             return 1;
         }
     } else if (parse_cart_file(resolved_path, m_temp_cart_memory, m_file_buffer, m_decompression_buffer, m_temp_lua_script, NULL) != 0) {
         fprintf(stderr, "cstore: failed to read existing cart\n");
+        p8_release_load_buffers();
         p8_show_io_icon(false);
         lua_pushinteger(L, 0);
         return 1;
@@ -1245,6 +1252,7 @@ int cstore(lua_State *L)
         memcpy(m_cart_memory + destaddr, m_memory + srcaddr, len);
 
     write_cart_p8(resolved_path, m_temp_lua_script, m_temp_cart_memory);
+    p8_release_load_buffers();
 
     p8_show_io_icon(false);
     lua_pushinteger(L, len);
@@ -1444,7 +1452,13 @@ int reload(lua_State *L)
             lua_pushinteger(L, 0);
             return 1;
         }
+        if (!p8_ensure_temp_buffers() || !p8_ensure_load_buffers()) {
+            p8_show_io_icon(false);
+            lua_pushinteger(L, 0);
+            return 1;
+        }
         int ret = parse_cart_file(resolved_path, m_temp_cart_memory, m_file_buffer, m_decompression_buffer, NULL, NULL);
+        p8_release_load_buffers();
         p8_show_io_icon(false);
         if (ret < 0) {
             lua_pushinteger(L, 0);
