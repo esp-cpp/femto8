@@ -484,6 +484,14 @@ int p8_shutdown()
     m_lua_script = NULL;
     m_temp_lua_script = NULL;
 
+#ifdef OS_FREERTOS
+    /* p8_init() makes a new one each time */
+    if (m_drawSemaphore) {
+        vSemaphoreDelete(m_drawSemaphore);
+        m_drawSemaphore = NULL;
+    }
+#endif
+
     m_initialized = 0;
 
     return 0;
