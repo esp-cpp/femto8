@@ -1231,12 +1231,14 @@ int cstore(lua_State *L)
     if (access(resolved_path, F_OK) == -1) {
         if (errno != ENOENT) {
             fprintf(stderr, "cstore: failed to access existing cart: %s\n", strerror(errno));
+            p8_release_load_buffers();
             p8_show_io_icon(false);
             lua_pushinteger(L, 0);
             return 1;
         }
     } else if (parse_cart_file(resolved_path, m_temp_cart_memory, m_file_buffer, m_decompression_buffer, m_temp_lua_script, NULL) != 0) {
         fprintf(stderr, "cstore: failed to read existing cart\n");
+        p8_release_load_buffers();
         p8_show_io_icon(false);
         lua_pushinteger(L, 0);
         return 1;
